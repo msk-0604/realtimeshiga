@@ -79,7 +79,10 @@ export interface PostFilters {
   category?: CategoryId | "";
   municipality?: string;
   status?: string;
-  sort?: "newest" | "oldest";
+  sort?: "newest" | "oldest" | "nearby";
+  lat?: number;
+  lng?: number;
+  radiusKm?: number;
 }
 
 export interface PostFormInput {
@@ -92,6 +95,12 @@ export interface PostFormInput {
   content: string;
   url?: string;
   image_url?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+export interface PostWithDistance extends Post {
+  distance_km?: number;
 }
 
 export interface AdminStats {

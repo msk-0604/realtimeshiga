@@ -6,6 +6,8 @@ import { CATEGORIES } from "@/constants/categories";
 import { MUNICIPALITIES } from "@/constants/region";
 import { getStatusOptions } from "@/constants/statuses";
 import { createPostAction, updatePostAction } from "@/lib/posts/actions";
+import { ImageUploader } from "@/components/posts/ImageUploader";
+import { LocationPicker } from "@/components/posts/LocationPicker";
 import type { CategoryId, Post } from "@/types";
 
 type Mode = "create" | "edit";
@@ -22,6 +24,13 @@ export function PostForm({
   const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState<CategoryId>(post?.category ?? "food");
   const [status, setStatus] = useState(post?.status ?? "available");
+  const [imageUrl, setImageUrl] = useState(post?.image_url ?? "");
+  const [latitude, setLatitude] = useState(
+    post?.latitude != null ? String(post.latitude) : ""
+  );
+  const [longitude, setLongitude] = useState(
+    post?.longitude != null ? String(post.longitude) : ""
+  );
 
   const statusOptions = useMemo(() => getStatusOptions(category), [category]);
 
@@ -35,6 +44,9 @@ export function PostForm({
     setError(null);
     formData.set("category", category);
     formData.set("status", status);
+    formData.set("image_url", imageUrl);
+    formData.set("latitude", latitude);
+    formData.set("longitude", longitude);
 
     startTransition(async () => {
       const result =
@@ -146,6 +158,21 @@ export function PostForm({
         />
       </Field>
 
+      <Field label="位置情報（任意）">
+        <LocationPicker
+          latitude={latitude}
+          longitude={longitude}
+          onChange={(lat, lng) => {
+            setLatitude(lat);
+            setLongitude(lng);
+          }}
+        />
+      </Field>
+
+      <Field label="画像（任意）">
+        <ImageUploader value={imageUrl} onChange={setImageUrl} />
+      </Field>
+
       <Field label="URL（任意）">
         <input
           name="url"
@@ -154,19 +181,6 @@ export function PostForm({
           className="input"
           placeholder="https://"
         />
-      </Field>
-
-      <Field label="画像URL（任意）">
-        <input
-          name="image_url"
-          type="url"
-          defaultValue={post?.image_url ?? ""}
-          className="input"
-          placeholder="https://... （2MB以下推奨）"
-        />
-        <p className="mt-1 text-xs text-slate-500">
-          MVPでは画像URLを貼り付けて登録できます。直接アップロードは今後対応予定です。
-        </p>
       </Field>
 
       {error && (

@@ -29,6 +29,8 @@ function toFormInput(raw: Record<string, FormDataEntryValue>): unknown {
     content: String(raw.content ?? ""),
     url: String(raw.url ?? ""),
     image_url: String(raw.image_url ?? ""),
+    latitude: String(raw.latitude ?? ""),
+    longitude: String(raw.longitude ?? ""),
   };
 }
 

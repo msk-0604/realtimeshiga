@@ -13,13 +13,22 @@ export function Header({ compact = false }: { compact?: boolean }) {
             <p className="truncate text-xs text-slate-500">{SITE.catchCopy}</p>
           )}
         </Link>
-        <Link
-          href="/posts/new"
-          className="shrink-0 rounded-full bg-[#1a6b8a] px-3 py-1.5 text-xs font-semibold text-white"
-        >
-          ＋ 投稿する
-        </Link>
+        <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href="/login"
+            className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600"
+          >
+            ログイン
+          </Link>
+          <Link
+            href="/posts/new"
+            className="rounded-full bg-[#1a6b8a] px-3 py-1.5 text-xs font-semibold text-white"
+          >
+            ＋ 投稿する
+          </Link>
+        </div>
       </div>
     </header>
   );
 }
+

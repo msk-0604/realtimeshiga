@@ -69,22 +69,41 @@ npm start
 2. **Project Settings → API** から以下を取得
    - Project URL
    - anon public key
-3. `.env.local` に設定
+   - **service_role key**（管理画面用・絶対に公開しない）
+3. `.env.local` / Vercel に設定
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 ADMIN_PASSWORD=your-strong-password
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_SITE_URL=https://realtimeshiga.vercel.app
 ```
+
+4. SQL Editor で次を順に実行
+   1. `supabase/schema.sql`
+   2. `supabase/rls_v2.sql`（RLS強化・確認RPC・座標補完）
+
+5. Authentication → URL Configuration
+   - Site URL: 本番URL
+   - Redirect URLs: `https://realtimeshiga.vercel.app/auth/callback`
+
+---
+
+## 追加機能（実装済み）
+
+- **画像アップロード** … 投稿フォームから Storage（`post-images`）へ
+- **ログイン** … `/login`（一般 / 店舗オーナー）
+- **RLS強化** … 所有者編集・確認は `verify_post` RPC・管理は service role
+- **現在地周辺検索** … 検索画面の「現在地周辺を検索」＋地図（OpenStreetMap）
 
 ---
 
 ## SQL 実行方法
 
 1. Supabase ダッシュボード → **SQL Editor**
-2. リポジトリの `supabase/schema.sql` をすべて貼り付けて **Run**
-3. テーブル・インデックス・RLS・サンプルデータが作成されます
+2. まず `supabase/schema.sql` をすべて貼り付けて **Run**
+3. 続けて `supabase/rls_v2.sql` を実行
 
 作成される主なテーブル：
 

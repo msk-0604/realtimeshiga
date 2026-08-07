@@ -1,8 +1,17 @@
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getCurrentProfile, getSessionUser } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/admin";
 import { memoryStore } from "@/lib/posts/memory-store";
+import { distanceKm, resolvePostCoords } from "@/lib/geo";
 import { sanitizeUrl } from "@/lib/validation";
-import type { AdminStats, Post, PostFilters, PostFormInput, Report } from "@/types";
+import type {
+  AdminStats,
+  Post,
+  PostFilters,
+  PostFormInput,
+  PostWithDistance,
+  Report,
+} from "@/types";
 
 function mapPost(row: Record<string, unknown>): Post {
   return {
@@ -28,9 +37,45 @@ function mapPost(row: Record<string, unknown>): Post {
   };
 }
 
-export async function listPosts(filters: PostFilters = {}): Promise<Post[]> {
+function dbImageUrl(url: string | null | undefined): string | null {
+  const sanitized = sanitizeUrl(url);
+  if (!sanitized) return null;
+  if (sanitized.startsWith("data:")) return null; // DBには保存不可
+  return sanitized;
+}
+
+function applyNearbySort(posts: Post[], filters: PostFilters): PostWithDistance[] {
+  if (filters.lat == null || filters.lng == null) {
+    return posts;
+  }
+
+  const radius = filters.radiusKm ?? 20;
+  const withDistance: PostWithDistance[] = posts
+    .map((p) => {
+      const coords = resolvePostCoords(p);
+      if (!coords) return { ...p, distance_km: undefined };
+      const d = distanceKm(filters.lat!, filters.lng!, coords.lat, coords.lng);
+      return { ...p, distance_km: d };
+    })
+    .filter((p) => p.distance_km == null || p.distance_km <= radius);
+
+  if (filters.sort === "nearby") {
+    withDistance.sort((a, b) => {
+      const da = a.distance_km ?? Number.POSITIVE_INFINITY;
+      const db = b.distance_km ?? Number.POSITIVE_INFINITY;
+      if (da !== db) return da - db;
+      return (
+        new Date(b.last_verified_at).getTime() - new Date(a.last_verified_at).getTime()
+      );
+    });
+  }
+
+  return withDistance;
+}
+
+export async function listPosts(filters: PostFilters = {}): Promise<PostWithDistance[]> {
   if (!isSupabaseConfigured()) {
-    return memoryStore.listPosts(filters);
+    return applyNearbySort(memoryStore.listPosts(filters), filters);
   }
 
   const supabase = await createClient();
@@ -54,9 +99,10 @@ export async function listPosts(filters: PostFilters = {}): Promise<Post[]> {
   const { data, error } = await query;
   if (error) {
     console.error("listPosts error:", error.message);
-    return memoryStore.listPosts(filters);
+    return applyNearbySort(memoryStore.listPosts(filters), filters);
   }
-  return (data ?? []).map(mapPost);
+
+  return applyNearbySort((data ?? []).map(mapPost), filters);
 }
 
 export async function getPostById(id: string): Promise<Post | null> {
@@ -79,7 +125,18 @@ export async function createPost(input: PostFormInput): Promise<Post> {
   }
 
   const supabase = await createClient();
+  const user = await getSessionUser();
+  const profile = await getCurrentProfile();
+
+  const authorType =
+    profile?.role === "shop"
+      ? "verified_shop"
+      : profile?.role === "admin"
+        ? "admin"
+        : "general";
+
   const payload = {
+    user_id: user?.id ?? null,
     category: input.category,
     title: input.title,
     shop_name: input.shop_name,
@@ -87,10 +144,15 @@ export async function createPost(input: PostFormInput): Promise<Post> {
     address: input.address,
     status: input.status,
     content: input.content,
-    url: sanitizeUrl(input.url),
-    image_url: sanitizeUrl(input.image_url),
-    author_type: "general",
-    is_verified_shop: false,
+    url: (() => {
+      const u = sanitizeUrl(input.url);
+      return u && !u.startsWith("data:") ? u : null;
+    })(),
+    image_url: dbImageUrl(input.image_url),
+    latitude: input.latitude ?? null,
+    longitude: input.longitude ?? null,
+    author_type: authorType,
+    is_verified_shop: profile?.role === "shop",
     is_active: true,
   };
 
@@ -107,7 +169,23 @@ export async function updatePost(id: string, input: PostFormInput): Promise<Post
   }
 
   const supabase = await createClient();
+  const user = await getSessionUser();
+  const existing = await getPostById(id);
+  if (!existing) throw new Error("投稿が見つかりません");
+
+  // 所有者または未紐付け投稿のみ編集可（厳密な制御はRLS側）
+  if (existing.user_id && user && existing.user_id !== user.id) {
+    const profile = await getCurrentProfile();
+    if (profile?.role !== "admin") {
+      throw new Error("この投稿を編集する権限がありません");
+    }
+  }
+
   const now = new Date().toISOString();
+  const imageUrl = dbImageUrl(input.image_url);
+  let url = sanitizeUrl(input.url);
+  if (url?.startsWith("data:")) url = null;
+
   const { data, error } = await supabase
     .from("posts")
     .update({
@@ -118,8 +196,10 @@ export async function updatePost(id: string, input: PostFormInput): Promise<Post
       address: input.address,
       status: input.status,
       content: input.content,
-      url: sanitizeUrl(input.url),
-      image_url: sanitizeUrl(input.image_url),
+      url,
+      image_url: imageUrl,
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null,
       updated_at: now,
       last_verified_at: now,
     })
@@ -139,6 +219,15 @@ export async function verifyPost(id: string): Promise<Post> {
   }
 
   const supabase = await createClient();
+
+  // RPCがあれば使う（RLS強化後）
+  const { error: rpcError } = await supabase.rpc("verify_post", { post_id: id });
+  if (!rpcError) {
+    const refreshed = await getPostById(id);
+    if (refreshed) return refreshed;
+  }
+
+  // フォールバック（旧ポリシー）
   const now = new Date().toISOString();
   const { data, error } = await supabase
     .from("posts")
@@ -163,6 +252,7 @@ export async function createReport(input: {
   }
 
   const supabase = await createClient();
+  const user = await getSessionUser();
 
   if (input.device_id) {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
@@ -181,6 +271,7 @@ export async function createReport(input: {
 
   const { error } = await supabase.from("reports").insert({
     post_id: input.post_id,
+    user_id: user?.id ?? null,
     reason: input.reason,
     detail: input.detail?.trim() || null,
     device_id: input.device_id ?? null,
@@ -195,7 +286,7 @@ export async function listAllPostsAdmin(): Promise<Post[]> {
     return memoryStore.listAllPosts();
   }
 
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("posts")
     .select("*")
@@ -210,7 +301,7 @@ export async function listReportsAdmin(): Promise<Report[]> {
     return memoryStore.listReports();
   }
 
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   const { data, error } = await supabase
     .from("reports")
     .select("*")
@@ -225,7 +316,7 @@ export async function getAdminStats(): Promise<AdminStats> {
     return memoryStore.getStats();
   }
 
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   const [posts, reports, profiles] = await Promise.all([
     supabase.from("posts").select("id", { count: "exact", head: true }),
     supabase.from("reports").select("id", { count: "exact", head: true }),
@@ -244,7 +335,7 @@ export async function adminSetActive(id: string, isActive: boolean): Promise<voi
     memoryStore.setPostActive(id, isActive);
     return;
   }
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   const { error } = await supabase
     .from("posts")
     .update({ is_active: isActive, updated_at: new Date().toISOString() })
@@ -257,7 +348,7 @@ export async function adminDeletePost(id: string): Promise<void> {
     memoryStore.deletePost(id);
     return;
   }
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   const { error } = await supabase.from("posts").delete().eq("id", id);
   if (error) throw new Error(error.message);
 }
@@ -267,7 +358,7 @@ export async function adminSetVerified(id: string, verified: boolean): Promise<v
     memoryStore.setVerifiedShop(id, verified);
     return;
   }
-  const supabase = await createClient();
+  const supabase = createServiceClient();
   const { error } = await supabase
     .from("posts")
     .update({

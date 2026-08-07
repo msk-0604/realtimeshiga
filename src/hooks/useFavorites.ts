@@ -92,7 +92,7 @@ function readDeviceId(): string {
   return cachedDeviceId;
 }
 
-function subscribeDeviceId(_callback: () => void) {
+function subscribeDeviceId() {
   return () => {};
 }
 

@@ -4,9 +4,9 @@ import { AUTHOR_TYPE_LABELS } from "@/constants/statuses";
 import { StatusBadge } from "@/components/posts/StatusBadge";
 import { LastUpdatedLabel } from "@/components/posts/TimeAgo";
 import { FavoriteButton } from "@/components/posts/FavoriteButton";
-import type { Post } from "@/types";
+import type { PostWithDistance } from "@/types";
 
-export function PostCard({ post }: { post: Post }) {
+export function PostCard({ post }: { post: PostWithDistance }) {
   const category = getCategory(post.category);
 
   return (
@@ -15,9 +15,25 @@ export function PostCard({ post }: { post: Post }) {
         <div className="flex items-center gap-1.5 text-sm text-slate-600">
           <span aria-hidden>{category.icon}</span>
           <span>{category.label}</span>
+          {post.distance_km != null && (
+            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">
+              {post.distance_km < 1
+                ? `${Math.round(post.distance_km * 1000)}m`
+                : `${post.distance_km.toFixed(1)}km`}
+            </span>
+          )}
         </div>
         <FavoriteButton postId={post.id} />
       </div>
+
+      {post.image_url && !post.image_url.startsWith("data:") && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={post.image_url}
+          alt=""
+          className="mt-3 h-36 w-full rounded-lg object-cover border border-slate-100"
+        />
+      )}
 
       <h2 className="mt-2 text-base font-bold leading-snug text-slate-900">
         <Link href={`/posts/${post.id}`} className="hover:text-[#1a6b8a]">
