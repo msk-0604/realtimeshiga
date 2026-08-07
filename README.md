@@ -83,6 +83,7 @@ NEXT_PUBLIC_SITE_URL=https://realtimeshiga.vercel.app
 4. SQL Editor で次を順に実行
    1. `supabase/schema.sql`
    2. `supabase/rls_v2.sql`（RLS強化・確認RPC・座標補完）
+   3. `supabase/schema_v3.sql`（いいね・コメント・通知・店舗・広告・分析）
 
 5. Authentication → URL Configuration
    - Site URL: 本番URL

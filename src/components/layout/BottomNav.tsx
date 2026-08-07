@@ -12,8 +12,8 @@ const ITEMS: {
   { href: "/", label: "ホーム", icon: "🏠" },
   { href: "/search", label: "検索", icon: "🔍" },
   { href: "/posts/new", label: "投稿", icon: "＋", primary: true },
-  { href: "/favorites", label: "お気に入り", icon: "♡" },
-  { href: "/mypage", label: "マイページ", icon: "👤" },
+  { href: "/map", label: "地図", icon: "🗺" },
+  { href: "/mypage", label: "マイ", icon: "👤" },
 ];
 
 export function BottomNav() {
@@ -21,7 +21,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 inset-x-0 z-50 border-t border-slate-200 bg-white/95 backdrop-blur-sm pb-[env(safe-area-inset-bottom)]"
+      className="fixed bottom-0 inset-x-0 z-50 border-t border-slate-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/95"
       aria-label="メインナビゲーション"
     >
       <ul className="mx-auto flex max-w-lg items-stretch justify-between px-1">
@@ -34,10 +34,7 @@ export function BottomNav() {
           if (item.primary) {
             return (
               <li key={item.href} className="flex-1">
-                <Link
-                  href={item.href}
-                  className="-mt-3 flex flex-col items-center gap-0.5"
-                >
+                <Link href={item.href} className="-mt-3 flex flex-col items-center gap-0.5">
                   <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1a6b8a] text-xl font-bold text-white shadow-md shadow-[#1a6b8a]/30">
                     {item.icon}
                   </span>
@@ -54,7 +51,9 @@ export function BottomNav() {
               <Link
                 href={item.href}
                 className={`flex flex-col items-center gap-0.5 py-2 text-[10px] ${
-                  active ? "font-semibold text-[#1a6b8a]" : "text-slate-500"
+                  active
+                    ? "font-semibold text-[#1a6b8a]"
+                    : "text-slate-500 dark:text-slate-400"
                 }`}
               >
                 <span className="text-lg leading-none" aria-hidden>

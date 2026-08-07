@@ -31,6 +31,10 @@ function mapPost(row: Record<string, unknown>): Post {
     is_active: Boolean(row.is_active),
     is_verified_shop: Boolean(row.is_verified_shop),
     author_type: (row.author_type as Post["author_type"]) ?? "general",
+    like_count: Number(row.like_count ?? 0),
+    comment_count: Number(row.comment_count ?? 0),
+    view_count: Number(row.view_count ?? 0),
+    share_count: Number(row.share_count ?? 0),
     last_verified_at: String(row.last_verified_at),
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
@@ -92,17 +96,46 @@ export async function listPosts(filters: PostFilters = {}): Promise<PostWithDist
     );
   }
 
-  query = query.order("last_verified_at", {
-    ascending: filters.sort === "oldest",
-  });
+  query = query.order(
+    filters.sort === "popular" || filters.sort === "rising"
+      ? "like_count"
+      : "last_verified_at",
+    {
+      ascending: filters.sort === "oldest",
+    }
+  );
 
   const { data, error } = await query;
   if (error) {
     console.error("listPosts error:", error.message);
+    // like_count 未追加環境向けフォールバック
+    if (error.message.includes("like_count")) {
+      const fallback = await supabase
+        .from("posts")
+        .select("*")
+        .eq("is_active", true)
+        .order("last_verified_at", { ascending: filters.sort === "oldest" });
+      return applyNearbySort((fallback.data ?? []).map(mapPost), filters);
+    }
     return applyNearbySort(memoryStore.listPosts(filters), filters);
   }
 
-  return applyNearbySort((data ?? []).map(mapPost), filters);
+  let posts = (data ?? []).map(mapPost);
+
+  if (filters.sort === "rising" || filters.sort === "popular") {
+    posts = [...posts].sort((a, b) => {
+      const scoreA = a.like_count * 3 + a.comment_count * 2 + a.view_count * 0.01;
+      const scoreB = b.like_count * 3 + b.comment_count * 2 + b.view_count * 0.01;
+      if (filters.sort === "rising") {
+        const ageA = (Date.now() - new Date(a.last_verified_at).getTime()) / 3600000 + 1;
+        const ageB = (Date.now() - new Date(b.last_verified_at).getTime()) / 3600000 + 1;
+        return scoreB / ageB - scoreA / ageA;
+      }
+      return scoreB - scoreA;
+    });
+  }
+
+  return applyNearbySort(posts, filters);
 }
 
 export async function getPostById(id: string): Promise<Post | null> {

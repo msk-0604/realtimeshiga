@@ -76,10 +76,22 @@ export default async function MyPage() {
             投稿する
           </Link>
           <Link
-            href="/favorites"
-            className="rounded-xl border border-slate-200 py-3 text-center font-semibold text-slate-700"
+            href="/notifications"
+            className="rounded-xl border border-slate-200 py-3 text-center font-semibold text-slate-700 dark:border-slate-700"
           >
-            お気に入り
+            通知
+          </Link>
+          <Link
+            href="/premium"
+            className="rounded-xl border border-[#1a6b8a]/30 bg-[#e8f4f8] py-3 text-center font-semibold text-[#1a6b8a]"
+          >
+            プレミアム
+          </Link>
+          <Link
+            href="/shops"
+            className="rounded-xl border border-slate-200 py-3 text-center font-semibold text-slate-700 dark:border-slate-700"
+          >
+            公式店舗
           </Link>
         </div>
       </section>

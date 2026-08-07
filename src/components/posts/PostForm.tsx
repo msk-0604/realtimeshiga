@@ -22,7 +22,7 @@ export function PostForm({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [category, setCategory] = useState<CategoryId>(post?.category ?? "food");
+  const [category, setCategory] = useState<CategoryId>(post?.category ?? "gourmet");
   const [status, setStatus] = useState(post?.status ?? "available");
   const [imageUrl, setImageUrl] = useState(post?.image_url ?? "");
   const [latitude, setLatitude] = useState(

@@ -1,22 +1,26 @@
 import Link from "next/link";
 import { SITE } from "@/constants/region";
+import { NotificationBell } from "@/components/notifications/NotificationsClient";
 
 export function Header({ compact = false }: { compact?: boolean }) {
   return (
-    <header className="border-b border-slate-100 bg-white">
+    <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/95 backdrop-blur dark:border-slate-800 dark:bg-slate-950/95">
       <div className="mx-auto flex max-w-lg items-center justify-between px-4 py-3">
         <Link href="/" className="min-w-0">
           <p className="text-lg font-bold tracking-tight text-[#1a6b8a]">
             {SITE.name}
           </p>
           {!compact && (
-            <p className="truncate text-xs text-slate-500">{SITE.catchCopy}</p>
+            <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+              {SITE.catchCopy}
+            </p>
           )}
         </Link>
         <div className="flex shrink-0 items-center gap-2">
+          <NotificationBell />
           <Link
             href="/login"
-            className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600"
+            className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 dark:border-slate-700 dark:text-slate-300"
           >
             ログイン
           </Link>
@@ -24,11 +28,10 @@ export function Header({ compact = false }: { compact?: boolean }) {
             href="/posts/new"
             className="rounded-full bg-[#1a6b8a] px-3 py-1.5 text-xs font-semibold text-white"
           >
-            ＋ 投稿する
+            ＋ 投稿
           </Link>
         </div>
       </div>
     </header>
   );
 }
-

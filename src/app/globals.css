@@ -7,6 +7,17 @@
   --brand: #1a6b8a;
   --brand-soft: #e8f4f8;
   --brand-dark: #155a74;
+  --card: #ffffff;
+  --border: #e2e8f0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0b1220;
+    --foreground: #e2e8f0;
+    --card: #0f172a;
+    --border: #1e293b;
+  }
 }
 
 @theme inline {
@@ -25,12 +36,12 @@ body {
   display: block;
   width: 100%;
   border-radius: 0.75rem;
-  border: 1px solid #e2e8f0;
-  background: #fff;
+  border: 1px solid var(--border);
+  background: var(--card);
   padding: 0.75rem 0.875rem;
   font-size: 0.9375rem;
   line-height: 1.5;
-  color: #0f172a;
+  color: var(--foreground);
   outline: none;
 }
 
@@ -48,4 +59,25 @@ body {
   padding-right: 1rem;
   padding-top: 1rem;
   padding-bottom: 6.5rem;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.35s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in {
+    animation: none;
+  }
 }

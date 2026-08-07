@@ -1,7 +1,8 @@
-import { STATUS_BY_CATEGORY } from "@/constants/statuses";
+import { getStatusOptions, type StatusTone } from "@/constants/statuses";
+import { normalizeCategory } from "@/constants/categories";
 import type { CategoryId } from "@/types";
 
-const TONE_CLASSES: Record<string, string> = {
+const TONE_CLASSES: Record<StatusTone, string> = {
   available: "bg-emerald-50 text-emerald-800 border-emerald-200",
   busy: "bg-amber-50 text-amber-800 border-amber-200",
   full: "bg-rose-50 text-rose-800 border-rose-200",
@@ -10,7 +11,7 @@ const TONE_CLASSES: Record<string, string> = {
   alert: "bg-orange-50 text-orange-800 border-orange-200",
 };
 
-const TONE_DOT: Record<string, string> = {
+const TONE_DOT: Record<StatusTone, string> = {
   available: "bg-emerald-500",
   busy: "bg-amber-500",
   full: "bg-rose-500",
@@ -24,11 +25,12 @@ export function StatusBadge({
   status,
   size = "md",
 }: {
-  category: CategoryId;
+  category: CategoryId | string;
   status: string;
   size?: "sm" | "md";
 }) {
-  const option = STATUS_BY_CATEGORY[category]?.find((s) => s.value === status);
+  const normalized = normalizeCategory(category);
+  const option = getStatusOptions(normalized).find((s) => s.value === status);
   const tone = option?.tone ?? "info";
   const label = option?.label ?? status;
 

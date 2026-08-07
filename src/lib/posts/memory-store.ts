@@ -11,6 +11,16 @@ let memoryReports: Report[] = structuredClone(DUMMY_REPORTS);
 
 function sortPosts(posts: Post[], sort: PostFilters["sort"] = "newest"): Post[] {
   return [...posts].sort((a, b) => {
+    if (sort === "popular" || sort === "rising") {
+      const scoreA = a.like_count * 3 + a.comment_count * 2 + a.view_count * 0.01;
+      const scoreB = b.like_count * 3 + b.comment_count * 2 + b.view_count * 0.01;
+      if (sort === "rising") {
+        const ageA = (Date.now() - new Date(a.last_verified_at).getTime()) / 3600000 + 1;
+        const ageB = (Date.now() - new Date(b.last_verified_at).getTime()) / 3600000 + 1;
+        return scoreB / ageB - scoreA / ageA;
+      }
+      return scoreB - scoreA;
+    }
     const aTime = new Date(a.last_verified_at).getTime();
     const bTime = new Date(b.last_verified_at).getTime();
     return sort === "oldest" ? aTime - bTime : bTime - aTime;
@@ -74,6 +84,10 @@ export const memoryStore = {
       is_active: true,
       is_verified_shop: false,
       author_type: "general",
+      like_count: 0,
+      comment_count: 0,
+      view_count: 0,
+      share_count: 0,
       last_verified_at: now,
       created_at: now,
       updated_at: now,
