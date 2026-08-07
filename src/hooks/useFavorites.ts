@@ -4,35 +4,62 @@ import { useCallback, useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "rts_favorites";
 const DEVICE_KEY = "rts_device_id";
+const EMPTY_FAVORITES: string[] = [];
+
+let cachedRaw: string | null = null;
+let cachedFavorites: string[] = EMPTY_FAVORITES;
 
 function readFavorites(): string[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return EMPTY_FAVORITES;
+
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
+    if (raw === cachedRaw) return cachedFavorites;
+    cachedRaw = raw;
+
+    if (!raw) {
+      cachedFavorites = EMPTY_FAVORITES;
+      return cachedFavorites;
+    }
+
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((v) => typeof v === "string") : [];
+    cachedFavorites = Array.isArray(parsed)
+      ? parsed.filter((v): v is string => typeof v === "string")
+      : EMPTY_FAVORITES;
+    return cachedFavorites;
   } catch {
-    return [];
+    cachedFavorites = EMPTY_FAVORITES;
+    return cachedFavorites;
   }
 }
 
 function writeFavorites(ids: string[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
+  const raw = JSON.stringify(ids);
+  localStorage.setItem(STORAGE_KEY, raw);
+  cachedRaw = raw;
+  cachedFavorites = ids;
   window.dispatchEvent(new Event("rts-favorites"));
 }
 
 function subscribeFavorites(callback: () => void) {
-  window.addEventListener("storage", callback);
-  window.addEventListener("rts-favorites", callback);
+  const onChange = () => {
+    cachedRaw = null; // force re-read
+    callback();
+  };
+  window.addEventListener("storage", onChange);
+  window.addEventListener("rts-favorites", onChange);
   return () => {
-    window.removeEventListener("storage", callback);
-    window.removeEventListener("rts-favorites", callback);
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener("rts-favorites", onChange);
   };
 }
 
 export function useFavorites() {
-  const favorites = useSyncExternalStore(subscribeFavorites, readFavorites, () => [] as string[]);
+  const favorites = useSyncExternalStore(
+    subscribeFavorites,
+    readFavorites,
+    () => EMPTY_FAVORITES
+  );
 
   const isFavorite = useCallback(
     (id: string) => favorites.includes(id),
@@ -50,17 +77,22 @@ export function useFavorites() {
   return { favorites, isFavorite, toggleFavorite };
 }
 
+let cachedDeviceId = "";
+
 function readDeviceId(): string {
   if (typeof window === "undefined") return "";
+  if (cachedDeviceId) return cachedDeviceId;
+
   let id = localStorage.getItem(DEVICE_KEY);
   if (!id) {
     id = crypto.randomUUID();
     localStorage.setItem(DEVICE_KEY, id);
   }
-  return id;
+  cachedDeviceId = id;
+  return cachedDeviceId;
 }
 
-function subscribeDeviceId() {
+function subscribeDeviceId(_callback: () => void) {
   return () => {};
 }
 
